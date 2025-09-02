@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Absensi Pramuka SD TRIMULYO 02</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align:center; background:#f3f9f6; margin:0; padding:20px; }
+    h1 { color:#2e7d32; }
+    .card { background:#fff; padding:20px; margin:20px auto; width:320px; border-radius:15px; box-shadow:0 4px 8px rgba(0,0,0,0.1); }
+    input, select, button { margin:8px; padding:10px; width:90%; border-radius:8px; border:1px solid #ccc; }
+    button { background:#2e7d32; color:#fff; font-weight:bold; cursor:pointer; }
+    video, canvas { width: 100%; border-radius: 10px; margin-top: 10px; }
+    .fallback { color: red; font-size: 14px; }
+    #clock { font-size: 22px; color:#1b5e20; font-weight:bold; margin-top:10px; }
+  </style>
+</head>
+<body>
+  <h1>🌲 Absensi Pramuka SD TRIMULYO 02 🌲</h1>
+  <div id="clock"></div>
+
+  <!-- Absensi Anggota -->
+  <div class="card">
+    <h2>Anggota</h2>
+    <input type="text" id="namaAnggota" placeholder="Nama">
+    <select id="kelas">
+      <option value="4">Kelas 4</option>
+      <option value="5">Kelas 5</option>
+      <option value="6">Kelas 6</option>
+    </select>
+    <select id="statusAnggota">
+      <option value="Hadir">Hadir</option>
+      <option value="Izin">Izin</option>
+      <option value="Sakit">Sakit</option>
+    </select>
+
+    <!-- Kamera Anggota -->
+    <video id="videoAnggota" autoplay playsinline></video>
+    <p class="fallback" id="fallbackAnggota" style="display:none;">
+      Kamera tidak tersedia, silakan upload foto manual:
+    </p>
+    <input type="file" id="fotoManualAnggota" accept="image/*" style="display:none;">
+    <button onclick="ambilFoto('anggota')">📷 Ambil Foto</button>
+  </div>
+
+  <!-- Absensi Pembina -->
+  <div class="card">
+    <h2>Pembina</h2>
+    <input type="text" id="namaPembina" placeholder="Nama">
+    <input type="text" id="jabatan" placeholder="Jabatan">
+    <select id="statusPembina">
+      <option value="Hadir">Hadir</option>
+      <option value="Izin">Izin</option>
+      <option value="Sakit">Sakit</option>
+    </select>
+
+    <!-- Kamera Pembina -->
+    <video id="videoPembina" autoplay playsinline></video>
+    <p class="fallback" id="fallbackPembina" style="display:none;">
+      Kamera tidak tersedia, silakan upload foto manual:
+    </p>
+    <input type="file" id="fotoManualPembina" accept="image/*" style="display:none;">
+    <button onclick="ambilFoto('pembina')">📷 Ambil Foto</button>
+  </div>
+
+  <!-- QR Code Scanner -->
+  <div class="card">
+    <h2>📡 Scan QR Code Cepat</h2>
+    <video id="previewQR" autoplay playsinline></video>
+    <p id="qrResult">Hasil Scan: -</p>
+    <button onclick="mulaiScanQR()">Mulai Scan QR</button>
+  </div>
+
+  <!-- Tombol Kirim Absensi -->
+  <div class="card">
+    <button onclick="kirim('anggota')">✅ Kirim Absensi Anggota</button>
+    <button onclick="kirim('pembina')">✅ Kirim Absensi Pembina</button>
+  </div>
+
+  <!-- Script -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script>
+    const scriptURL = "PASTE_LINK_APPS_SCRIPT_DISINI"; // Ganti dengan Apps Script kamu
+    let fotoAnggota = "";
+    let fotoPembina = "";
+
+    // Jam digital
+    function updateClock() {
+      const now = new Date();
+      document.getElementById("clock").innerText =
+        now.toLocaleTimeString("id-ID", { hour12: false });
+    }
+    setInterval(updateClock, 1000);
+
+    // Start kamera dengan fallback
+    function startCamera(videoId, fallbackId, manualId) {
+      const video = document.getElementById(videoId);
+      const fallback = document.getElementById(fallbackId);
+      const manualInput = document.getElementById(manualId);
+
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then(stream => { video.srcObject = stream; })
+        .catch(err => {
+          console.warn("Kamera tidak bisa diakses: " + err);
+          video.style.display = "none";
+          fallback.style.display = "block";
+          manualInput.style.display = "block";
+        });
+    }
+
+    startCamera("videoAnggota", "fallbackAnggota", "fotoManualAnggota");
+    startCamera("videoPembina", "fallbackPembina", "fotoManualPembina");
+
+    // Ambil foto dari kamera atau manual
+    function ambilFoto(tipe) {
+      let video, canvas, manualInput;
+
+      if (tipe === "anggota") {
+        video = document.getElementById("videoAnggota");
+        canvas = document.createElement("canvas");
+        manualInput = document.getElementById("fotoManualAnggota");
+      } else {
+        video = document.getElementById("videoPembina");
+        canvas = document.createElement("canvas");
+        manualInput = document.getElementById("fotoManualPembina");
+      }
+
+      if (video.style.display !== "none") {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext("2d").drawImage(video, 0, 0);
+        if (tipe === "anggota") fotoAnggota = canvas.toDataURL("image/png");
+        else fotoPembina = canvas.toDataURL("image/png");
+        alert("Foto berhasil diambil dari kamera!");
+      } else if (manualInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          if (tipe === "anggota") fotoAnggota = e.target.result;
+          else fotoPembina = e.target.result;
+          alert("Foto berhasil diupload manual!");
+        }
+        reader.readAsDataURL(manualInput.files[0]);
+      } else {
+        alert("Foto belum diambil atau diupload!");
+      }
+    }
+
+    // Kirim data ke Google Sheet
+    function kirim(tipe) {
+      let data = {};
+      if (tipe === "anggota") {
+        data = {
+          nama: document.getElementById("namaAnggota").value,
+          kelas: document.getElementById("kelas").value,
+          status: document.getElementById("statusAnggota").value,
+          foto: fotoAnggota,
+          tipe
+        };
+      } else {
+        data = {
+          nama: document.getElementById("namaPembina").value,
+          jabatan: document.getElementById("jabatan").value,
+          status: document.getElementById("statusPembina").value,
+          foto: fotoPembina,
+          tipe
+        };
+      }
+
+      if (!data.nama) { alert("Isi nama terlebih dahulu!"); return; }
+      if (!data.foto) { alert("Ambil foto terlebih dahulu!"); return; }
+
+      fetch(scriptURL, {
+        method: "POST",
+        body: JSON.stringify(data)
+      })
+      .then(res => res.text())
+      .then(() => alert("Absensi berhasil dikirim!"))
+      .catch(err => alert("Gagal mengirim: " + err));
+    }
+
+    // QR Code Scanner
+    function mulaiScanQR() {
+      const qrScanner = new Html5Qrcode("previewQR");
+      qrScanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        qrCodeMessage => {
+          document.getElementById("qrResult").innerText = "Hasil Scan: " + qrCodeMessage;
+          qrScanner.stop();
+
+          // Misal format QR = NAMA|KELAS
+          let parts = qrCodeMessage.split("|");
+          if (parts.length === 2) {
+            document.getElementById("namaAnggota").value = parts[0];
+            document.getElementById("kelas").value = parts[1];
+          }
+        },
+        errorMessage => {}
+      ).catch(err => console.log("QR Error: " + err));
+    }
+  </script>
+</body>
+</html>
